@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -71,6 +72,18 @@ func (c *Client) readPump() {
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
 		c.hub.broadcast <- message
+		switch fmt.Sprintf("%s", message) {
+		case "subscribeBloom":
+			fmt.Println("test1")
+		case "subscribeAddress":
+			fmt.Println("test2")
+		case "subscribeBlock":
+			fmt.Println("test3")
+		case "unsubscribeAll":
+			fmt.Println("test4")
+		default:
+			fmt.Println("Invalid command")
+		}
 	}
 }
 
