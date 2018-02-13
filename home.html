@@ -28,6 +28,18 @@ window.onload = function () {
         return false;
     };
 
+    document.getElementById("subscribe_addr").onclick = function() {
+        conn.send("subscribeAddress PErGzC5FRx81brtPaXKU1L5uyqmHCtCbCx");
+    }
+
+    document.getElementById("unsubscribe_all").onclick = function() {
+        conn.send("unsubscribeAll");
+    }
+
+    document.getElementById("subscribe_block").onclick = function() {
+        conn.send("subscribeBlock");
+    }
+
     if (window["WebSocket"]) {
         conn = new WebSocket("ws://" + document.location.host + "/ws");
         conn.onclose = function (evt) {
@@ -93,6 +105,10 @@ body {
 <form id="form">
     <input type="submit" value="Send" />
     <input type="text" id="msg" size="64"/>
+
+    <button id="subscribe_addr">Subscribe Address</button>
+    <button id="subscribe_block">Subscribe Block</button>
+    <button id="unsubscribe_all">Unsubscribe All</button>
 </form>
 </body>
 </html>

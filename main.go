@@ -6,7 +6,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -16,7 +15,6 @@ import (
 var addr = flag.String("addr", ":8080", "http service address")
 
 func serveHome(w http.ResponseWriter, r *http.Request) {
-	log.Println(r.URL)
 	if r.URL.Path != "/" {
 		http.Error(w, "Not found", 404)
 		return
@@ -30,22 +28,21 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	var connCfg = &rpcclient.ConnConfig{
-		Host:                 "rpc.phore.io/rpc",
+		// Phore RPC Daemon
+		Host: "127.0.0.1:11772",
+		// Phore RPC Proxy
+		// Host:                 "127.0.0.1:11773",
+		// Host:                 "rpc.phore.io/rpc",
 		HTTPPostMode:         true,
-		DisableTLS:           false,
+		User:                 "phorerpc",
+		Pass:                 "JCiM652B1gW1bbbxLHwdnpETFNs3HoGndUGS2Ef2J8jq",
+		DisableTLS:           true,
 		DisableAutoReconnect: false,
 		DisableConnectOnNew:  false,
 	}
 
 	client, _ := rpcclient.New(connCfg, nil)
 
-	blockCount, err := client.GetBlockCount()
-
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("Block count: %d\n", blockCount)
 	flag.Parse()
 	hub := newHub()
 	go hub.run()
@@ -53,7 +50,16 @@ func main() {
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r, client)
 	})
-	err = http.ListenAndServe(*addr, nil)
+	http.HandleFunc("/notify", func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		for k := range r.Form {
+			notificationBlockHandler(hub, client, k)
+			return
+		}
+	})
+
+	log.Println("Starting Websockets Server...")
+	err := http.ListenAndServe(*addr, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
