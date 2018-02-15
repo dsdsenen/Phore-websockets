@@ -37,7 +37,7 @@ func broadcastBlocks(hub *Hub, data *btcjson.GetBlockVerboseResult) {
 		log.Println("Error getting block info: ", err)
 		return
 	}
-	hub.broadcastBlocks <- []byte(string(jsonData))
+	hub.broadcastBlock <- []byte(string(jsonData))
 }
 
 func broadcastTransactions(client *rpcclient.Client, hub *Hub, data *btcjson.GetBlockVerboseResult) {
@@ -51,9 +51,10 @@ func broadcastTransactions(client *rpcclient.Client, hub *Hub, data *btcjson.Get
 		for _, transaction := range tx.Vout {
 			// fmt.Printf("TRANSACTION: %+v\n", transaction)
 			for _, address := range transaction.ScriptPubKey.Addresses {
-				fmt.Println("ADDRESS", address)
-				// jsonTx, _ := json.Marshal(tx)
-				// hub.broadcast <- []byte(string(jsonTx))
+				// fmt.Println("ADDRESS", address)
+				jsonTx, _ := json.Marshal(tx)
+				broadcastTransaction := BroadcastAddressMessage{address, []byte(string(jsonTx))}
+				hub.broadcastAddress <- broadcastTransaction
 			}
 		}
 	}

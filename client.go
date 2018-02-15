@@ -80,7 +80,7 @@ func (c *Client) readPump() {
 		case strings.HasPrefix(msg, "subscribeBloom"):
 			subscribeBloom(c, msg)
 		case strings.HasPrefix(msg, "subscribeAddress"):
-			subscribeAddress(c, msg)
+			subscribeAddress(c, strings.Split(msg, " ")[1])
 		case strings.HasPrefix(msg, "subscribeBlock"):
 			subscribeBlock(c)
 		case strings.HasPrefix(msg, "unsubscribeAll"):
