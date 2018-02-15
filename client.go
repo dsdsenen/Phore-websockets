@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -74,17 +75,16 @@ func (c *Client) readPump() {
 			}
 			break
 		}
-		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		c.hub.broadcast <- message
-		switch fmt.Sprintf("%s", message) {
-		case "subscribeBloom":
-			subscribeBloom(string(message))
-		case "subscribeAddress":
-			subscribeAddress(string(message))
-		case "subscribeBlock":
-			subscribeBlock(string(message))
-		case "unsubscribeAll":
-			unsubscribeAll()
+		msg := string(bytes.TrimSpace(bytes.Replace(message, newline, space, -1)))
+		switch {
+		case strings.HasPrefix(msg, "subscribeBloom"):
+			subscribeBloom(c, msg)
+		case strings.HasPrefix(msg, "subscribeAddress"):
+			subscribeAddress(c, msg)
+		case strings.HasPrefix(msg, "subscribeBlock"):
+			subscribeBlock(c)
+		case strings.HasPrefix(msg, "unsubscribeAll"):
+			unsubscribeAll(c)
 		default:
 			fmt.Println("Invalid command")
 		}
@@ -145,7 +145,6 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request, rpcClient *rpccli
 		return
 	}
 	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}
-	client.hub.register <- client
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
 	go client.writePump()

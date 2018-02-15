@@ -3,51 +3,55 @@
 // license that can be found in the LICENSE file.
 package main
 
+// Addresses is a channel used to register an address to a websocket client
+type Addresses struct {
+	client  *Client
+	address []string
+}
+
 // Hub maintains the set of active clients and broadcasts messages to the clients.
 type Hub struct {
 	// Registered clients.
-	clients map[*Client]bool
+	subscribedToBlocks map[*Client]bool
 
-	// Addresses being requested by subscribe Address
-	addresses map[string][]*Client
-
-	// Inbound messages from the clients.
-	broadcast chan []byte
+	// Output messages to the clients.
+	broadcastBlocks chan []byte
 
 	// Register requests from the clients.
-	register chan *Client
+	registerBlock chan *Client
 
 	// Unregister requests from clients.
-	unregister chan *Client
+	unregister     chan *Client
+	unsubscribeAll chan *Client
 }
 
 func newHub() *Hub {
+	// registerAddresses := make(chan Register)
 	return &Hub{
-		broadcast:  make(chan []byte),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		clients:    make(map[*Client]bool),
-		addresses:  make(map[string][]*Client),
+		broadcastBlocks:    make(chan []byte),
+		registerBlock:      make(chan *Client),
+		unsubscribeAll:     make(chan *Client),
+		subscribedToBlocks: make(map[*Client]bool),
 	}
 }
 
 func (h *Hub) run() {
 	for {
 		select {
-		case client := <-h.register:
-			h.clients[client] = true
-		case client := <-h.unregister:
-			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
+		case client := <-h.registerBlock:
+			h.subscribedToBlocks[client] = true
+		case client := <-h.unsubscribeAll:
+			if _, ok := h.subscribedToBlocks[client]; ok {
+				delete(h.subscribedToBlocks, client)
 				close(client.send)
 			}
-		case message := <-h.broadcast:
-			for client := range h.clients {
+		case message := <-h.broadcastBlocks:
+			for client := range h.subscribedToBlocks {
 				select {
 				case client.send <- message:
 				default:
 					close(client.send)
-					delete(h.clients, client)
+					delete(h.subscribedToBlocks, client)
 				}
 			}
 		}

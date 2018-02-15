@@ -4,19 +4,21 @@ import (
 	"fmt"
 )
 
-func subscribeBloom(addr string) {
+func subscribeBloom(client *Client, addr string) {
 	fmt.Println(addr)
 }
 
 // SubscribeAddress is used for a client to subscribe to any events happening to an address
-func subscribeAddress(addr string) {
-	fmt.Println(addr)
+func subscribeAddress(client *Client, addr string) {
+	fmt.Println("One new address registered", client, addr)
+	// client.hub.registerAddress <-
 }
 
-func subscribeBlock(blockHash string) {
-	fmt.Println(blockHash)
+func subscribeBlock(client *Client) {
+	fmt.Println("One new client registered", client)
+	client.hub.registerBlock <- client
 }
 
-func unsubscribeAll() {
-
+func unsubscribeAll(client *Client) {
+	client.hub.unsubscribeAll <- client
 }

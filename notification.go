@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/phoreproject/btcd/btcjson"
 	"github.com/phoreproject/btcd/chaincfg/chainhash"
 	"github.com/phoreproject/btcd/rpcclient"
 )
 
 func notificationBlockHandler(hub *Hub, client *rpcclient.Client, blockID string) {
 	hash, err := chainhash.NewHashFromStr(blockID)
-	fmt.Println("HUB: %+v", hub.addresses)
+	// fmt.Println("HUB: %+v", hub.addresses)
 	if err != nil {
 		log.Println("Error parsing the hash: ", err)
 		return
@@ -22,37 +23,38 @@ func notificationBlockHandler(hub *Hub, client *rpcclient.Client, blockID string
 		log.Println("Error getting block: ", err)
 		return
 	}
-	fmt.Printf("BLOCK INFO: %+v\n", data)
 
+	// Broadcast messages to subscribed clients
+	broadcastBlocks(hub, data)
+	broadcastTransactions(client, hub, data)
+}
+
+func broadcastBlocks(hub *Hub, data *btcjson.GetBlockVerboseResult) {
+	fmt.Printf("BLOCK INFO: %+v\n", data)
+	jsonData, err := json.Marshal(data)
+
+	if err != nil {
+		log.Println("Error getting block info: ", err)
+		return
+	}
+	hub.broadcastBlocks <- []byte(string(jsonData))
+}
+
+func broadcastTransactions(client *rpcclient.Client, hub *Hub, data *btcjson.GetBlockVerboseResult) {
 	for _, txID := range data.Tx {
-		hash2, err := chainhash.NewHashFromStr(txID)
-		log.Println("HASH: ", hash2)
-		data2, err := client.GetRawTransactionVerbose(hash2)
+		hashTx, err := chainhash.NewHashFromStr(txID)
+		tx, err := client.GetRawTransactionVerbose(hashTx)
 		if err != nil {
 			log.Println("Error getting transaction: ", err)
 			return
 		}
-		for _, transaction := range data2.Vout {
-			fmt.Printf("TRANSACTION: %+v\n", transaction)
+		for _, transaction := range tx.Vout {
+			// fmt.Printf("TRANSACTION: %+v\n", transaction)
 			for _, address := range transaction.ScriptPubKey.Addresses {
 				fmt.Println("ADDRESS", address)
-				jsonTx, _ := json.Marshal(data2)
-				fmt.Println("BROADCAST KRAI")
-				hub.broadcast <- []byte(string(jsonTx))
+				// jsonTx, _ := json.Marshal(tx)
+				// hub.broadcast <- []byte(string(jsonTx))
 			}
 		}
 	}
-
-	// address, err := btcutil.DecodeAddress("PDqJskowZHNxufyWhL2aTHho72RHEDHKti", defaultNet)
-	// fmt.Println(address, err)
-	// // addr, err := btcutil.DecodeAddress(addrString, defaultNet)
-	// if err != nil {
-	// 	fmt.Println("Error")
-	// }
-	// fmt.Println(addr.String())
-	// data, err := client.SearchRawTransactionsVerbose(address, 0, 10, false, false, make([]string, 0))
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	// fmt.Println("Transaction 0 confirmations: ", data[0].Confirmations)
 }

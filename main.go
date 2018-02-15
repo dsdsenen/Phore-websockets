@@ -31,7 +31,6 @@ func main() {
 		// Phore RPC Daemon
 		Host: "127.0.0.1:11772",
 		// Phore RPC Proxy
-		// Host:                 "127.0.0.1:11773",
 		// Host:                 "rpc.phore.io/rpc",
 		HTTPPostMode:         true,
 		User:                 "phorerpc",
