@@ -35,7 +35,6 @@ type Hub struct {
 }
 
 func newHub() *Hub {
-	// registerAddresses := make(chan Register)
 	return &Hub{
 		broadcastBlock:      make(chan []byte),
 		broadcastAddress:    make(chan BroadcastAddressMessage),
@@ -75,16 +74,38 @@ func (h *Hub) run() {
 				select {
 				case client.send <- broadcastAddress.message:
 				default:
-					var i int
-					for j, v := range h.subscribedToAddress[addr] {
-						if v == client {
-							i = j
-						}
-					}
+					deleteClientFromAddress(client, addr)
 					close(client.send)
-					h.subscribedToAddress[addr] = append(h.subscribedToAddress[addr][:i], h.subscribedToAddress[addr][i+1:]...)
+
+				}
+			}
+		case client := <-h.unsubscribeAll:
+			delete(h.subscribedToBlocks, client)
+			// TODO: Improve this delete method
+			for address, clients := range h.subscribedToAddress {
+				if clientInSlice(client, clients) {
+					deleteClientFromAddress(client, address)
 				}
 			}
 		}
 	}
+}
+
+func deleteClientFromAddress(client *Client, addr string) {
+	var i int
+	for j, v := range client.hub.subscribedToAddress[addr] {
+		if v == client {
+			i = j
+		}
+	}
+	client.hub.subscribedToAddress[addr] = append(client.hub.subscribedToAddress[addr][:i], client.hub.subscribedToAddress[addr][i+1:]...)
+}
+
+func clientInSlice(client *Client, list []*Client) bool {
+	for _, b := range list {
+		if b == client {
+			return true
+		}
+	}
+	return false
 }

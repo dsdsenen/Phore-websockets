@@ -10,13 +10,13 @@ func subscribeBloom(client *Client, addr string) {
 
 // SubscribeAddress is used for a client to subscribe to any events happening to an address
 func subscribeAddress(client *Client, addr string) {
-	fmt.Println("One new address registered", client, addr)
+	// fmt.Println("One new address registered", client, addr)
 	register := RegisterAddress{client, addr}
 	client.hub.registerAddress <- register
 }
 
 func subscribeBlock(client *Client) {
-	fmt.Println("One new client registered", client)
+	// fmt.Println("One new client registered", client)
 	client.hub.registerBlock <- client
 }
 

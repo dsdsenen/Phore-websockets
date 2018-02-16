@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 
 	"github.com/phoreproject/btcd/btcjson"
@@ -12,7 +11,6 @@ import (
 
 func notificationBlockHandler(hub *Hub, client *rpcclient.Client, blockID string) {
 	hash, err := chainhash.NewHashFromStr(blockID)
-	// fmt.Println("HUB: %+v", hub.addresses)
 	if err != nil {
 		log.Println("Error parsing the hash: ", err)
 		return
@@ -30,7 +28,6 @@ func notificationBlockHandler(hub *Hub, client *rpcclient.Client, blockID string
 }
 
 func broadcastBlocks(hub *Hub, data *btcjson.GetBlockVerboseResult) {
-	fmt.Printf("BLOCK INFO: %+v\n", data)
 	jsonData, err := json.Marshal(data)
 
 	if err != nil {
@@ -49,9 +46,7 @@ func broadcastTransactions(client *rpcclient.Client, hub *Hub, data *btcjson.Get
 			return
 		}
 		for _, transaction := range tx.Vout {
-			// fmt.Printf("TRANSACTION: %+v\n", transaction)
 			for _, address := range transaction.ScriptPubKey.Addresses {
-				// fmt.Println("ADDRESS", address)
 				jsonTx, _ := json.Marshal(tx)
 				broadcastTransaction := BroadcastAddressMessage{address, []byte(string(jsonTx))}
 				hub.broadcastAddress <- broadcastTransaction
