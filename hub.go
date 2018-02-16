@@ -70,12 +70,19 @@ func (h *Hub) run() {
 				}
 			}
 		case broadcastAddress := <-h.broadcastAddress:
-			for _, client := range h.subscribedToAddress[broadcastAddress.address] {
+			addr := broadcastAddress.address
+			for _, client := range h.subscribedToAddress[addr] {
 				select {
 				case client.send <- broadcastAddress.message:
 				default:
+					var i int
+					for j, v := range h.subscribedToAddress[addr] {
+						if v == client {
+							i = j
+						}
+					}
 					close(client.send)
-					delete(h.subscribedToBlocks, client)
+					h.subscribedToAddress[addr] = append(h.subscribedToAddress[addr][:i], h.subscribedToAddress[addr][i+1:]...)
 				}
 			}
 		}
