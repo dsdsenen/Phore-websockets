@@ -1,12 +1,19 @@
 // Copyright 2013 The Gorilla WebSocket Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-package main
+package websockets
+
+import "github.com/phoreproject/btcutil/bloom"
 
 // RegisterAddress is a channel used to register an address to a websocket client
 type RegisterAddress struct {
 	client  *Client
 	address string
+}
+
+type RegisterBloom struct {
+	client *Client
+	bloom  *bloom.Filter
 }
 
 // BroadcastAddressMessage used to receive message of addresses
@@ -20,6 +27,7 @@ type Hub struct {
 	// Registered clients.
 	subscribedToBlocks  map[*Client]bool
 	subscribedToAddress map[string][]*Client
+	subscribedToBloom   map[*Client]*bloom.Filter
 
 	// Output messages to the clients.
 	broadcastBlock   chan []byte
@@ -28,13 +36,14 @@ type Hub struct {
 	// Register requests from the clients.
 	registerBlock   chan *Client
 	registerAddress chan RegisterAddress
+	registerBloom   chan RegisterBloom
 
 	// Unregister requests from clients.
 	unregister     chan *Client
 	unsubscribeAll chan *Client
 }
 
-func newHub() *Hub {
+func NewHub() *Hub {
 	return &Hub{
 		broadcastBlock:      make(chan []byte),
 		broadcastAddress:    make(chan BroadcastAddressMessage),
@@ -43,10 +52,11 @@ func newHub() *Hub {
 		unsubscribeAll:      make(chan *Client),
 		subscribedToBlocks:  make(map[*Client]bool),
 		subscribedToAddress: make(map[string][]*Client),
+		subscribedToBloom:   make(map[*Client]*bloom.Filter),
 	}
 }
 
-func (h *Hub) run() {
+func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.registerBlock:
@@ -54,6 +64,8 @@ func (h *Hub) run() {
 		case registerAddress := <-h.registerAddress:
 			addr := registerAddress.address
 			h.subscribedToAddress[addr] = append(h.subscribedToAddress[addr], registerAddress.client)
+		case registerBloom := <-h.registerBloom:
+			h.subscribedToBloom[registerBloom.client] = registerBloom.bloom
 		case client := <-h.unsubscribeAll:
 			if _, ok := h.subscribedToBlocks[client]; ok {
 				delete(h.subscribedToBlocks, client)
@@ -71,13 +83,14 @@ func (h *Hub) run() {
 		case broadcastAddress := <-h.broadcastAddress:
 			addr := broadcastAddress.address
 			for _, client := range h.subscribedToAddress[addr] {
-				select {
-				case client.send <- broadcastAddress.message:
-				default:
-					deleteClientFromAddress(client, addr)
-					close(client.send)
-
-				}
+				go func() { // process each message asynchronously
+					select {
+					case client.send <- broadcastAddress.message:
+					default:
+						deleteClientFromAddress(client, addr)
+						close(client.send)
+					}
+				}()
 			}
 		case client := <-h.unsubscribeAll:
 			delete(h.subscribedToBlocks, client)
