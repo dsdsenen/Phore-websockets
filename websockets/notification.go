@@ -1,4 +1,4 @@
-package main
+package websockets
 
 import (
 	"encoding/json"
@@ -9,7 +9,7 @@ import (
 	"github.com/phoreproject/btcd/rpcclient"
 )
 
-func notificationBlockHandler(hub *Hub, client *rpcclient.Client, blockID string) {
+func NotificationBlockHandler(hub *Hub, client *rpcclient.Client, blockID string) {
 	hash, err := chainhash.NewHashFromStr(blockID)
 	if err != nil {
 		log.Println("Error parsing the hash: ", err)
@@ -22,9 +22,13 @@ func notificationBlockHandler(hub *Hub, client *rpcclient.Client, blockID string
 		return
 	}
 
-	// Broadcast messages to subscribed clients
-	broadcastBlocks(hub, data)
-	broadcastTransactions(client, hub, data)
+	// Broadcast messages to subscribed clients asynchronously
+	go broadcastBlocks(hub, data)
+	go broadcastTransactions(client, hub, data)
+}
+
+func NotificationMempoolHandler(hub *Hub, client *rpcclient.Client, transactionID string) {
+
 }
 
 func broadcastBlocks(hub *Hub, data *btcjson.GetBlockVerboseResult) {

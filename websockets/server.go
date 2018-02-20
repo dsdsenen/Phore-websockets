@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package main
+package websockets
 
 import (
 	"bytes"
@@ -72,7 +72,7 @@ func (c *Client) readPump() {
 		msg := string(bytes.TrimSpace(bytes.Replace(message, newline, space, -1)))
 		switch {
 		case strings.HasPrefix(msg, "subscribeBloom"):
-			subscribeBloom(c, msg)
+			subscribeBloom(c, strings.Split(msg, " ")[1:])
 		case strings.HasPrefix(msg, "subscribeAddress"):
 			subscribeAddress(c, strings.Split(msg, " ")[1])
 		case strings.HasPrefix(msg, "subscribeBlock"):
@@ -132,7 +132,7 @@ func (c *Client) writePump() {
 }
 
 // serveWs handles websocket requests from the peer.
-func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request, rpcClient *rpcclient.Client) {
+func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request, rpcClient *rpcclient.Client) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)

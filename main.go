@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/phoreproject/Phore-websockets/websockets"
 	"github.com/phoreproject/btcd/rpcclient"
 )
 
@@ -43,16 +44,23 @@ func main() {
 	client, _ := rpcclient.New(connCfg, nil)
 
 	flag.Parse()
-	hub := newHub()
-	go hub.run()
+	hub := websockets.NewHub()
+	go hub.Run()
 	http.HandleFunc("/", serveHome)
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		serveWs(hub, w, r, client)
+		websockets.ServeWs(hub, w, r, client)
 	})
-	http.HandleFunc("/notify", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/notifyBlock", func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		for k := range r.Form {
-			notificationBlockHandler(hub, client, k)
+			websockets.NotificationBlockHandler(hub, client, k)
+			return
+		}
+	})
+	http.HandleFunc("/notifyMempool", func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		for k := range r.Form {
+			websockets.NotificationBlockHandler(hub, client, k)
 			return
 		}
 	})
