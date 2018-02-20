@@ -9,6 +9,7 @@ import (
 	"github.com/phoreproject/btcd/rpcclient"
 )
 
+// NotificationBlockHandler used to notify blocks
 func NotificationBlockHandler(hub *Hub, client *rpcclient.Client, blockID string) {
 	hash, err := chainhash.NewHashFromStr(blockID)
 	if err != nil {
@@ -24,11 +25,11 @@ func NotificationBlockHandler(hub *Hub, client *rpcclient.Client, blockID string
 
 	// Broadcast messages to subscribed clients asynchronously
 	go broadcastBlocks(hub, data)
-	go broadcastTransactions(client, hub, data)
+	go broadcastTransactions(hub, client, data)
 }
 
+// NotificationMempoolHandler used to notify mempool blocks
 func NotificationMempoolHandler(hub *Hub, client *rpcclient.Client, transactionID string) {
-
 }
 
 func broadcastBlocks(hub *Hub, data *btcjson.GetBlockVerboseResult) {
@@ -41,7 +42,7 @@ func broadcastBlocks(hub *Hub, data *btcjson.GetBlockVerboseResult) {
 	hub.broadcastBlock <- []byte(string(jsonData))
 }
 
-func broadcastTransactions(client *rpcclient.Client, hub *Hub, data *btcjson.GetBlockVerboseResult) {
+func broadcastTransactions(hub *Hub, client *rpcclient.Client, data *btcjson.GetBlockVerboseResult) {
 	for _, txID := range data.Tx {
 		hashTx, err := chainhash.NewHashFromStr(txID)
 		tx, err := client.GetRawTransactionVerbose(hashTx)
@@ -54,6 +55,7 @@ func broadcastTransactions(client *rpcclient.Client, hub *Hub, data *btcjson.Get
 				jsonTx, _ := json.Marshal(tx)
 				broadcastTransaction := BroadcastAddressMessage{address, []byte(string(jsonTx))}
 				hub.broadcastAddress <- broadcastTransaction
+				hub.broadcastBloom <- broadcastTransaction
 			}
 		}
 	}

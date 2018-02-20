@@ -36,6 +36,7 @@ type Hub struct {
 	// Output messages to the clients.
 	broadcastBlock   chan []byte
 	broadcastAddress chan BroadcastAddressMessage
+	broadcastBloom   chan BroadcastAddressMessage
 
 	// Register requests from the clients.
 	registerBlock   chan *Client
@@ -51,6 +52,7 @@ func NewHub() *Hub {
 	return &Hub{
 		broadcastBlock:      make(chan []byte),
 		broadcastAddress:    make(chan BroadcastAddressMessage),
+		broadcastBloom:      make(chan BroadcastAddressMessage),
 		registerBlock:       make(chan *Client),
 		registerAddress:     make(chan RegisterAddress),
 		registerBloom:       make(chan RegisterBloom),
@@ -96,6 +98,15 @@ func (h *Hub) Run() {
 						close(client.send)
 					}
 				}()
+			}
+		case broadcastBloom := <-h.broadcastBloom:
+			addr := broadcastBloom.address
+			for bloom, clients := range h.subscribedToBloom {
+				if bloom.Matches([]byte(addr)) {
+					for _, client := range clients {
+						client.send <- broadcastBloom.message
+					}
+				}
 			}
 		case client := <-h.unsubscribeAll:
 			delete(h.subscribedToBlocks, client)
