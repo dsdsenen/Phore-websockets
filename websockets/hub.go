@@ -3,8 +3,6 @@
 // license that can be found in the LICENSE file.
 package websockets
 
-import "github.com/phoreproject/btcutil/bloom"
-
 import (
 	"github.com/phoreproject/btcutil/bloom"
 )
@@ -101,11 +99,9 @@ func (h *Hub) Run() {
 			}
 		case broadcastBloom := <-h.broadcastBloom:
 			addr := broadcastBloom.address
-			for bloom, clients := range h.subscribedToBloom {
+			for client, bloom := range h.subscribedToBloom {
 				if bloom.Matches([]byte(addr)) {
-					for _, client := range clients {
-						client.send <- broadcastBloom.message
-					}
+					client.send <- broadcastBloom.message
 				}
 			}
 		case client := <-h.unsubscribeAll:
