@@ -3,10 +3,20 @@
 // license that can be found in the LICENSE file.
 package main
 
+import (
+	"github.com/phoreproject/btcutil/bloom"
+)
+
 // RegisterAddress is a channel used to register an address to a websocket client
 type RegisterAddress struct {
 	client  *Client
 	address string
+}
+
+// RegisterBloom is used by the channel to register the client on the hub
+type RegisterBloom struct {
+	client      *Client
+	bloomFilter *bloom.Filter
 }
 
 // BroadcastAddressMessage used to receive message of addresses
@@ -20,6 +30,7 @@ type Hub struct {
 	// Registered clients.
 	subscribedToBlocks  map[*Client]bool
 	subscribedToAddress map[string][]*Client
+	subscribedToBloom   map[*bloom.Filter][]*Client
 
 	// Output messages to the clients.
 	broadcastBlock   chan []byte
@@ -28,6 +39,7 @@ type Hub struct {
 	// Register requests from the clients.
 	registerBlock   chan *Client
 	registerAddress chan RegisterAddress
+	registerBloom   chan RegisterBloom
 
 	// Unregister requests from clients.
 	unregister     chan *Client
@@ -40,6 +52,7 @@ func newHub() *Hub {
 		broadcastAddress:    make(chan BroadcastAddressMessage),
 		registerBlock:       make(chan *Client),
 		registerAddress:     make(chan RegisterAddress),
+		registerBloom:       make(chan RegisterBloom),
 		unsubscribeAll:      make(chan *Client),
 		subscribedToBlocks:  make(map[*Client]bool),
 		subscribedToAddress: make(map[string][]*Client),
@@ -54,6 +67,9 @@ func (h *Hub) run() {
 		case registerAddress := <-h.registerAddress:
 			addr := registerAddress.address
 			h.subscribedToAddress[addr] = append(h.subscribedToAddress[addr], registerAddress.client)
+		case registerBloom := <-h.registerBloom:
+			bloom := registerBloom.bloomFilter
+			h.subscribedToBloom[bloom] = append(h.subscribedToBloom[bloom], registerBloom.client)
 		case client := <-h.unsubscribeAll:
 			if _, ok := h.subscribedToBlocks[client]; ok {
 				delete(h.subscribedToBlocks, client)

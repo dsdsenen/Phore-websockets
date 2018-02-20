@@ -28,6 +28,11 @@ window.onload = function () {
         return false;
     };
 
+    document.getElementById("subscribe_bloom").onclick = function() {
+        conn.send("subscribeBloom Testing test 0 0");
+    }
+
+
     document.getElementById("subscribe_addr").onclick = function() {
         conn.send("subscribeAddress PRfoY8kvU7FX3DU9n7PB5sgMa6CBcwGtPa");
     }
@@ -106,6 +111,7 @@ body {
     <input type="submit" value="Send" />
     <input type="text" id="msg" size="64"/>
 
+    <button id="subscribe_bloom">Subscribe Bloom</button>
     <button id="subscribe_addr">Subscribe Address</button>
     <button id="subscribe_block">Subscribe Block</button>
     <button id="unsubscribe_all">Unsubscribe All</button>
