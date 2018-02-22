@@ -3,7 +3,6 @@ package websockets
 import (
 	"encoding/json"
 	"log"
-	"fmt"
 
 	"github.com/phoreproject/btcd/btcjson"
 	"github.com/phoreproject/btcd/chaincfg/chainhash"
@@ -31,9 +30,7 @@ func NotificationBlockHandler(hub *Hub, client *rpcclient.Client, blockID string
 
 // NotificationMempoolHandler used to notify mempool blocks
 func NotificationMempoolHandler(hub *Hub, client *rpcclient.Client, txID string) {
-	fmt.Println("MEMPOOL HANDLER")
-	fmt.Println(txID)
-	broadcastTransaction(hub, client, txID)
+	broadcastTransaction(hub, client, txID, true)
 }
 
 func broadcastBlocks(hub *Hub, data *btcjson.GetBlockVerboseResult) {
@@ -48,11 +45,11 @@ func broadcastBlocks(hub *Hub, data *btcjson.GetBlockVerboseResult) {
 
 func broadcastTransactions(hub *Hub, client *rpcclient.Client, data *btcjson.GetBlockVerboseResult) {
 	for _, txID := range data.Tx {
-		broadcastTransaction(hub, client, txID)
+		broadcastTransaction(hub, client, txID, false)
 	}
 }
 
-func broadcastTransaction(hub *Hub, client *rpcclient.Client, txID string) {
+func broadcastTransaction(hub *Hub, client *rpcclient.Client, txID string, memPool bool) {
 	hashTx, err := chainhash.NewHashFromStr(txID)
 	tx, err := client.GetRawTransactionVerbose(hashTx)
 	if err != nil {
@@ -62,7 +59,7 @@ func broadcastTransaction(hub *Hub, client *rpcclient.Client, txID string) {
 	for _, transaction := range tx.Vout {
 		for _, address := range transaction.ScriptPubKey.Addresses {
 			jsonTx, _ := json.Marshal(tx)
-			broadcastTransaction := BroadcastAddressMessage{address, []byte(string(jsonTx))}
+			broadcastTransaction := BroadcastAddressMessage{address: address, message: []byte(string(jsonTx)), memPool: memPool}
 			hub.broadcastAddress <- broadcastTransaction
 			hub.broadcastBloom <- broadcastTransaction
 		}
