@@ -3,6 +3,7 @@ package websockets
 import (
 	"encoding/json"
 	"log"
+	"fmt"
 
 	"github.com/phoreproject/btcd/btcjson"
 	"github.com/phoreproject/btcd/chaincfg/chainhash"
@@ -19,7 +20,7 @@ func NotificationBlockHandler(hub *Hub, client *rpcclient.Client, blockID string
 
 	data, err := client.GetBlockVerbose(hash)
 	if err != nil {
-		log.Println("Error getting block: ", err)
+		log.Println("Error getting the block: ", err)
 		return
 	}
 
@@ -29,7 +30,10 @@ func NotificationBlockHandler(hub *Hub, client *rpcclient.Client, blockID string
 }
 
 // NotificationMempoolHandler used to notify mempool blocks
-func NotificationMempoolHandler(hub *Hub, client *rpcclient.Client, transactionID string) {
+func NotificationMempoolHandler(hub *Hub, client *rpcclient.Client, txID string) {
+	fmt.Println("MEMPOOL HANDLER")
+	fmt.Println(txID)
+	broadcastTransaction(hub, client, txID)
 }
 
 func broadcastBlocks(hub *Hub, data *btcjson.GetBlockVerboseResult) {
@@ -44,19 +48,23 @@ func broadcastBlocks(hub *Hub, data *btcjson.GetBlockVerboseResult) {
 
 func broadcastTransactions(hub *Hub, client *rpcclient.Client, data *btcjson.GetBlockVerboseResult) {
 	for _, txID := range data.Tx {
-		hashTx, err := chainhash.NewHashFromStr(txID)
-		tx, err := client.GetRawTransactionVerbose(hashTx)
-		if err != nil {
-			log.Println("Error getting transaction: ", err)
-			return
-		}
-		for _, transaction := range tx.Vout {
-			for _, address := range transaction.ScriptPubKey.Addresses {
-				jsonTx, _ := json.Marshal(tx)
-				broadcastTransaction := BroadcastAddressMessage{address, []byte(string(jsonTx))}
-				hub.broadcastAddress <- broadcastTransaction
-				hub.broadcastBloom <- broadcastTransaction
-			}
+		broadcastTransaction(hub, client, txID)
+	}
+}
+
+func broadcastTransaction(hub *Hub, client *rpcclient.Client, txID string) {
+	hashTx, err := chainhash.NewHashFromStr(txID)
+	tx, err := client.GetRawTransactionVerbose(hashTx)
+	if err != nil {
+		log.Println("Error getting transaction: ", err)
+		return
+	}
+	for _, transaction := range tx.Vout {
+		for _, address := range transaction.ScriptPubKey.Addresses {
+			jsonTx, _ := json.Marshal(tx)
+			broadcastTransaction := BroadcastAddressMessage{address, []byte(string(jsonTx))}
+			hub.broadcastAddress <- broadcastTransaction
+			hub.broadcastBloom <- broadcastTransaction
 		}
 	}
 }

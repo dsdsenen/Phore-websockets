@@ -60,7 +60,7 @@ func main() {
 	http.HandleFunc("/notifyMempool", func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		for k := range r.Form {
-			websockets.NotificationBlockHandler(hub, client, k)
+			websockets.NotificationMempoolHandler(hub, client, k)
 			return
 		}
 	})
