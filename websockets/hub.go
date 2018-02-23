@@ -11,18 +11,20 @@ import (
 type RegisterAddress struct {
 	client  *Client
 	address string
+	mempool bool
 }
 
 type RegisterBloom struct {
 	client *Client
 	bloom  *bloom.Filter
+	mempool bool
 }
 
 // BroadcastAddressMessage used to receive message of addresses
 type BroadcastAddressMessage struct {
 	address string
 	message []byte
-	memPool bool
+	mempool bool
 }
 
 // Hub maintains the set of active clients and broadcasts messages to the clients.
@@ -30,7 +32,9 @@ type Hub struct {
 	// Registered clients.
 	subscribedToBlocks  map[*Client]bool
 	subscribedToAddress map[string][]*Client
+	subscribedToAddressMempool map[string][]*Client
 	subscribedToBloom   map[*Client]*bloom.Filter
+	subscribedToBloomMempool   map[*Client]*bloom.Filter
 
 	// Output messages to the clients.
 	broadcastBlock   chan []byte
@@ -58,7 +62,9 @@ func NewHub() *Hub {
 		unsubscribeAll:      make(chan *Client),
 		subscribedToBlocks:  make(map[*Client]bool),
 		subscribedToAddress: make(map[string][]*Client),
+		subscribedToAddressMempool: make(map[string][]*Client),
 		subscribedToBloom:   make(map[*Client]*bloom.Filter),
+		subscribedToBloomMempool:   make(map[*Client]*bloom.Filter),
 	}
 }
 
@@ -69,9 +75,17 @@ func (h *Hub) Run() {
 			h.subscribedToBlocks[client] = true
 		case registerAddress := <-h.registerAddress:
 			addr := registerAddress.address
-			h.subscribedToAddress[addr] = append(h.subscribedToAddress[addr], registerAddress.client)
+			if registerAddress.mempool {
+				h.subscribedToAddressMempool[addr] = append(h.subscribedToAddressMempool[addr], registerAddress.client)
+			} else {
+				h.subscribedToAddress[addr] = append(h.subscribedToAddress[addr], registerAddress.client)
+			}
 		case registerBloom := <-h.registerBloom:
-			h.subscribedToBloom[registerBloom.client] = registerBloom.bloom
+			if registerBloom.mempool {
+				h.subscribedToBloomMempool[registerBloom.client] = registerBloom.bloom
+			} else {
+				h.subscribedToBloom[registerBloom.client] = registerBloom.bloom
+			}
 		case client := <-h.unsubscribeAll:
 			if _, ok := h.subscribedToBlocks[client]; ok {
 				delete(h.subscribedToBlocks, client)
@@ -88,7 +102,13 @@ func (h *Hub) Run() {
 			}
 		case broadcastAddress := <-h.broadcastAddress:
 			addr := broadcastAddress.address
-			for _, client := range h.subscribedToAddress[addr] {
+			var channel []*Client
+			if broadcastAddress.mempool {
+				channel = h.subscribedToAddressMempool[addr]
+			} else {
+				channel = h.subscribedToAddress[addr]
+			}
+			for _, client := range channel {
 				go func() { // process each message asynchronously
 					select {
 					case client.send <- broadcastAddress.message:
@@ -100,7 +120,13 @@ func (h *Hub) Run() {
 			}
 		case broadcastBloom := <-h.broadcastBloom:
 			addr := broadcastBloom.address
-			for client, bloom := range h.subscribedToBloom {
+			var channel map[*Client]*bloom.Filter
+			if broadcastBloom.mempool {
+				channel = h.subscribedToBloomMempool
+			} else {
+				channel = h.subscribedToBloom
+			}
+			for client, bloom := range channel {
 				if bloom.Matches([]byte(addr)) {
 					client.send <- broadcastBloom.message
 				}

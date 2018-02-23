@@ -49,7 +49,7 @@ func broadcastTransactions(hub *Hub, client *rpcclient.Client, data *btcjson.Get
 	}
 }
 
-func broadcastTransaction(hub *Hub, client *rpcclient.Client, txID string, memPool bool) {
+func broadcastTransaction(hub *Hub, client *rpcclient.Client, txID string, mempool bool) {
 	hashTx, err := chainhash.NewHashFromStr(txID)
 	tx, err := client.GetRawTransactionVerbose(hashTx)
 	if err != nil {
@@ -59,7 +59,7 @@ func broadcastTransaction(hub *Hub, client *rpcclient.Client, txID string, memPo
 	for _, transaction := range tx.Vout {
 		for _, address := range transaction.ScriptPubKey.Addresses {
 			jsonTx, _ := json.Marshal(tx)
-			broadcastTransaction := BroadcastAddressMessage{address: address, message: []byte(string(jsonTx)), memPool: memPool}
+			broadcastTransaction := BroadcastAddressMessage{address: address, message: []byte(string(jsonTx)), mempool: mempool}
 			hub.broadcastAddress <- broadcastTransaction
 			hub.broadcastBloom <- broadcastTransaction
 		}
