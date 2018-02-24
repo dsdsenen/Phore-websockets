@@ -74,11 +74,14 @@ func (c *Client) readPump() {
 		case strings.HasPrefix(msg, "subscribeBloom"):
 			subscribeBloom(c, strings.Split(msg, " ")[1:])
 		case strings.HasPrefix(msg, "subscribeAddress"):
-			subscribeAddress(c, strings.Split(msg, " ")[1])
+			args := strings.Split(msg, " ")[1:]
+			subscribeAddress(c, args[0], !(args[1] == "false" || args[1] == "0" || args[1] == "no"))
 		case strings.HasPrefix(msg, "subscribeBlock"):
 			subscribeBlock(c)
 		case strings.HasPrefix(msg, "unsubscribeAll"):
 			unsubscribeAll(c)
+		case msg == "ping":
+			c.send <- []byte("pong")
 		default:
 			fmt.Println("Invalid command")
 		}

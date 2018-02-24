@@ -1,12 +1,14 @@
 package websockets
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"log"
 
 	"github.com/phoreproject/btcd/btcjson"
 	"github.com/phoreproject/btcd/chaincfg/chainhash"
 	"github.com/phoreproject/btcd/rpcclient"
+	"github.com/phoreproject/btcutil"
 )
 
 // NotificationBlockHandler used to notify blocks
@@ -57,11 +59,14 @@ func broadcastTransaction(hub *Hub, client *rpcclient.Client, txID string, mempo
 		return
 	}
 	for _, transaction := range tx.Vout {
+		jsonTx, _ := json.Marshal(tx)
 		for _, address := range transaction.ScriptPubKey.Addresses {
-			jsonTx, _ := json.Marshal(tx)
-			broadcastTransaction := BroadcastAddressMessage{address: address, message: []byte(string(jsonTx)), mempool: mempool}
-			hub.broadcastAddress <- broadcastTransaction
-			hub.broadcastBloom <- broadcastTransaction
+			broadcastAddress := BroadcastAddressMessage{address: address, message: []byte(string(jsonTx)), mempool: mempool}
+			hub.broadcastAddress <- broadcastAddress
 		}
+		transactionBytes, _ := hex.DecodeString(tx.Hex)
+		tx, _ := btcutil.NewTxFromBytes(transactionBytes)
+		broadcastTx := BroadcastTransactionMessage{transaction: tx, mempool: mempool, message: []byte(string(jsonTx))}
+		hub.broadcastBloom <- broadcastTx
 	}
 }

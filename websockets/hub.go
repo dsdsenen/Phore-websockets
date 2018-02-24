@@ -4,6 +4,7 @@
 package websockets
 
 import (
+	"github.com/phoreproject/btcutil"
 	"github.com/phoreproject/btcutil/bloom"
 )
 
@@ -15,8 +16,8 @@ type RegisterAddress struct {
 }
 
 type RegisterBloom struct {
-	client *Client
-	bloom  *bloom.Filter
+	client  *Client
+	bloom   *bloom.Filter
 	mempool bool
 }
 
@@ -27,19 +28,26 @@ type BroadcastAddressMessage struct {
 	mempool bool
 }
 
+// BroadcastTransactionMessage is used to receive messages of transactions
+type BroadcastTransactionMessage struct {
+	transaction *btcutil.Tx
+	message     []byte
+	mempool     bool
+}
+
 // Hub maintains the set of active clients and broadcasts messages to the clients.
 type Hub struct {
 	// Registered clients.
-	subscribedToBlocks  map[*Client]bool
-	subscribedToAddress map[string][]*Client
+	subscribedToBlocks         map[*Client]bool
+	subscribedToAddress        map[string][]*Client
 	subscribedToAddressMempool map[string][]*Client
-	subscribedToBloom   map[*Client]*bloom.Filter
+	subscribedToBloom          map[*Client]*bloom.Filter
 	subscribedToBloomMempool   map[*Client]*bloom.Filter
 
 	// Output messages to the clients.
 	broadcastBlock   chan []byte
 	broadcastAddress chan BroadcastAddressMessage
-	broadcastBloom   chan BroadcastAddressMessage
+	broadcastBloom   chan BroadcastTransactionMessage
 
 	// Register requests from the clients.
 	registerBlock   chan *Client
@@ -53,17 +61,17 @@ type Hub struct {
 
 func NewHub() *Hub {
 	return &Hub{
-		broadcastBlock:      make(chan []byte),
-		broadcastAddress:    make(chan BroadcastAddressMessage),
-		broadcastBloom:      make(chan BroadcastAddressMessage),
-		registerBlock:       make(chan *Client),
-		registerAddress:     make(chan RegisterAddress),
-		registerBloom:       make(chan RegisterBloom),
-		unsubscribeAll:      make(chan *Client),
-		subscribedToBlocks:  make(map[*Client]bool),
-		subscribedToAddress: make(map[string][]*Client),
+		broadcastBlock:             make(chan []byte),
+		broadcastAddress:           make(chan BroadcastAddressMessage),
+		broadcastBloom:             make(chan BroadcastTransactionMessage),
+		registerBlock:              make(chan *Client),
+		registerAddress:            make(chan RegisterAddress),
+		registerBloom:              make(chan RegisterBloom),
+		unsubscribeAll:             make(chan *Client),
+		subscribedToBlocks:         make(map[*Client]bool),
+		subscribedToAddress:        make(map[string][]*Client),
 		subscribedToAddressMempool: make(map[string][]*Client),
-		subscribedToBloom:   make(map[*Client]*bloom.Filter),
+		subscribedToBloom:          make(map[*Client]*bloom.Filter),
 		subscribedToBloomMempool:   make(map[*Client]*bloom.Filter),
 	}
 }
@@ -119,7 +127,6 @@ func (h *Hub) Run() {
 				}()
 			}
 		case broadcastBloom := <-h.broadcastBloom:
-			addr := broadcastBloom.address
 			var channel map[*Client]*bloom.Filter
 			if broadcastBloom.mempool {
 				channel = h.subscribedToBloomMempool
@@ -127,7 +134,7 @@ func (h *Hub) Run() {
 				channel = h.subscribedToBloom
 			}
 			for client, bloom := range channel {
-				if bloom.Matches([]byte(addr)) {
+				if bloom.MatchTxAndUpdate(broadcastBloom.transaction) {
 					client.send <- broadcastBloom.message
 				}
 			}

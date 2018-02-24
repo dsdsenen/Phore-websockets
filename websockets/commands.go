@@ -10,10 +10,21 @@ import (
 )
 
 func subscribeBloom(client *Client, args []string) error {
-	// Syntax: subscribeBloom <filterHex> <HashFuncs> <Tweak>
+	// Syntax: subscribeBloom <filter> <hashfuncs> <tweak> [flags=UpdateNone]
 
-	if len(args) != 3 {
+	if len(args) < 3 || len(args) > 4 {
 		return errors.New("Incorrect number of arguments")
+	}
+
+	flags := wire.BloomUpdateNone
+	if len(args) == 3 {
+		flags = wire.BloomUpdateNone
+	} else {
+		flagsInt, err := strconv.Atoi(args[3])
+		if err != nil {
+			errors.New("Could not parse update flags")
+		}
+		flags = wire.BloomUpdateType(flagsInt)
 	}
 
 	var bloomBytes []byte
@@ -38,7 +49,7 @@ func subscribeBloom(client *Client, args []string) error {
 		Filter:    bloomBytes,
 		HashFuncs: hashFuncs,
 		Tweak:     tweak,
-		Flags:     wire.BloomUpdateNone,
+		Flags:     flags,
 	})
 
 	client.hub.registerBloom <- RegisterBloom{client: client, bloom: filter}
@@ -46,9 +57,9 @@ func subscribeBloom(client *Client, args []string) error {
 }
 
 // SubscribeAddress is used for a client to subscribe to any events happening to an address
-func subscribeAddress(client *Client, addr string) {
+func subscribeAddress(client *Client, addr string, mempool bool) {
 	// fmt.Println("One new address registered", client, addr)
-	register := RegisterAddress{client: client, address: addr}
+	register := RegisterAddress{client: client, address: addr, mempool: mempool}
 	client.hub.registerAddress <- register
 }
 
