@@ -22,7 +22,7 @@ func subscribeBloom(client *Client, args []string) error {
 	} else {
 		flagsInt, err := strconv.Atoi(args[3])
 		if err != nil {
-			errors.New("Could not parse update flags")
+			return errors.New("Could not parse update flags")
 		}
 		flags = wire.BloomUpdateType(flagsInt)
 	}

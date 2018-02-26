@@ -1,6 +1,8 @@
 // Copyright 2013 The Gorilla WebSocket Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
+// Package websockets handles websocket messages and provides a simple websockets server.
 package websockets
 
 import (
@@ -15,6 +17,7 @@ type RegisterAddress struct {
 	mempool bool
 }
 
+// RegisterBloom is a channel message used to register a bloom filter
 type RegisterBloom struct {
 	client  *Client
 	bloom   *bloom.Filter
@@ -59,6 +62,7 @@ type Hub struct {
 	unsubscribeAll chan *Client
 }
 
+// NewHub creates a new hub to track messages about clients
 func NewHub() *Hub {
 	return &Hub{
 		broadcastBlock:             make(chan []byte),
@@ -76,6 +80,7 @@ func NewHub() *Hub {
 	}
 }
 
+// Run runs the hub forever
 func (h *Hub) Run() {
 	for {
 		select {
@@ -117,14 +122,14 @@ func (h *Hub) Run() {
 				channel = h.subscribedToAddress[addr]
 			}
 			for _, client := range channel {
-				go func() { // process each message asynchronously
+				go func(c *Client) { // process each message asynchronously
 					select {
-					case client.send <- broadcastAddress.message:
+					case c.send <- broadcastAddress.message:
 					default:
-						deleteClientFromAddress(client, addr)
-						close(client.send)
+						deleteClientFromAddress(c, addr)
+						close(c.send)
 					}
-				}()
+				}(client)
 			}
 		case broadcastBloom := <-h.broadcastBloom:
 			var channel map[*Client]*bloom.Filter
